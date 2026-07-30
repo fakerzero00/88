@@ -1,28 +1,229 @@
-// Improved win detection: check rows, columns, diagonals and highlight winning cells
-function checkWin(data){
-  // data expected as array of 9 strings (row-major order)
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>幸運拉霸機</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#140906;
+  font-family:"Microsoft JhengHei",Arial;
+}
+.machine{
+  width:360px;
+  padding:25px;
+  background:linear-gradient(145deg,#b46b22,#351505);
+  border-radius:30px;
+  color:white;
+  text-align:center;
+  position:relative;
+  box-shadow:0 0 40px #000;
+}
+h1{ color:#ffd85a }
+.screen{
+  background:#050505;
+  padding:15px;
+  border:8px solid #e0a33b;
+  border-radius:20px;
+  display:grid;
+  grid-template-columns:repeat(3,80px);
+  gap:8px;
+  justify-content:center;
+}
+.cell{
+  width:80px;
+  height:80px;
+  background:white;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:45px;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.spin{ animation:roll .1s infinite }
+@keyframes roll{ 0%{transform:translateY(-15px)}50%{transform:translateY(15px)}100%{transform:translateY(-15px)} }
+/* win effect */
+.cell.win{ transform:scale(1.12); box-shadow:0 0 28px 8px rgba(255,215,0,0.95); border-radius:14px }
+@keyframes winPulse{ 0%{box-shadow:0 0 12px 2px rgba(255,215,0,0.6)}50%{box-shadow:0 0 30px 10px rgba(255,215,0,0.95)}100%{box-shadow:0 0 12px 2px rgba(255,215,0,0.6)} }
+.cell.win.pulse{ animation: winPulse 0.9s ease-in-out infinite }
+/* 拉桿 */
+.lever{ position:absolute; right:-85px; top:50px; width:80px; height:260px; z-index:20 }
+.rod{ position:absolute; top:50px; left:33px; width:14px; height:170px; background:linear-gradient(90deg,#777,#fff,#777); border-radius:10px }
+.handle{ position:absolute; top:0; left:8px; width:60px; height:60px; background:#e63232; border-radius:50%; cursor:grab; z-index:30; box-shadow:0 8px 15px rgba(0,0,0,.7); touch-action:none }
+.result{ margin-top:25px; font-size:22px; color:#ffe27a }
+.test-btn{ margin-top:12px; padding:8px 12px; border-radius:8px; border:none; background:#ffd85a; color:#2b1709; font-weight:600; cursor:pointer }
+.test-btn:active{ transform:translateY(1px) }
+</style>
+</head>
+
+<body>
+
+<!-- audio (external files) -->
+<audio id="leverSound"><source src="https://cdn.pixabay.com/audio/2022/03/15/audio_2d7f1f4b9c.mp3"></audio>
+<audio id="spinSound"><source src="https://cdn.pixabay.com/audio/2022/03/10/audio_8c6b2f9d90.mp3"></audio>
+<audio id="winSound"><source src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3"></audio>
+
+<div class="machine">
+  <h1>🎰 幸運拉霸機</h1>
+  <div class="screen">
+    <div class="cell">🥩</div>
+    <div class="cell">🎁</div>
+    <div class="cell">🦐</div>
+
+    <div class="cell">🔥</div>
+    <div class="cell">🍖</div>
+    <div class="cell">🥩</div>
+
+    <div class="cell">🦐</div>
+    <div class="cell">🎁</div>
+    <div class="cell">🔥</div>
+  </div>
+
+  <div class="lever">
+    <div class="handle" id="handle" aria-label="拉桿"></div>
+    <div class="rod"></div>
+  </div>
+
+  <div class="result" id="result">拉下拉桿開始</div>
+</div>
+
+<script>
+// icons and DOM
+const icons=["🥩","🍖","🦐","🔥","🎁"];
+const cells=document.querySelectorAll('.cell');
+const handle=document.getElementById('handle');
+const result=document.getElementById('result');
+const leverSound=document.getElementById('leverSound');
+const spinSound=document.getElementById('spinSound');
+const winSound=document.getElementById('winSound');
+
+let dragging=false, startY=0, distance=0, running=false;
+
+// Utility: random icon
+function randomIcon(){ return icons[Math.floor(Math.random()*icons.length)]; }
+
+function spin(){
+  if(running) return;
+  running=true;
+  result.textContent='🎰 旋轉中...';
+
+  // clear previous win state
+  cells.forEach(c=>{ c.classList.remove('win','pulse'); c.classList.add('spin'); });
+
+  // spin sound (if available)
+  try{ spinSound.loop = true; spinSound.currentTime = 0; spinSound.play(); }catch(e){}
+
+  const timer = setInterval(()=>{ cells.forEach(c=>c.innerHTML = randomIcon()); }, 80);
+
+  setTimeout(()=>{
+    clearInterval(timer);
+    try{ spinSound.pause(); spinSound.currentTime = 0; }catch(e){}
+
+    // set final icons
+    const data = [];
+    cells.forEach(c=>{
+      c.classList.remove('spin');
+      const icon = randomIcon();
+      c.innerHTML = icon;
+      data.push(icon);
+    });
+
+    // check win
+    checkWin(data);
+    running=false;
+  }, 2000);
+}
+
+// check any winning line (rows, cols, diagonals) and highlight cells
+function checkWin(passedData){
+  const data = passedData && passedData.length===9 ? passedData.map(s=> (s||'').toString().trim()) : Array.from(cells).map(c=> (c.textContent||'').trim());
+
   const lines = [
     [0,1,2],[3,4,5],[6,7,8], // rows
     [0,3,6],[1,4,7],[2,5,8], // cols
-    [0,4,8],[2,4,6]          // diagonals
+    [0,4,8],[2,4,6]          // diags
   ];
   const winners = new Set();
-  lines.forEach(([a,b,c])=>{
-    if(data[a] && data[a]===data[b] && data[b]===data[c]){
+
+  for(const [a,b,c] of lines){
+    if(data[a] && data[a] === data[b] && data[b] === data[c]){
       winners.add(a); winners.add(b); winners.add(c);
+    }
+  }
+
+  // apply classes
+  cells.forEach((cell, idx)=>{
+    if(winners.has(idx)){
+      cell.classList.add('win');
+      // small delay before pulse to allow transition
+      setTimeout(()=>cell.classList.add('pulse'), 30);
+    } else {
+      cell.classList.remove('win','pulse');
     }
   });
 
-  // apply/remove win class per cell
-  cells.forEach((cell, idx)=>{
-    if(winners.has(idx)) cell.classList.add('win');
-    else cell.classList.remove('win');
-  });
-
-  if(winners.size > 0){
-    result.textContent='🎉 恭喜中獎！';
-    playAudioElementOrFallback(winAudioElem, playWinMelody);
+  if(winners.size>0){
+    result.textContent = '🎉 恭喜中獎！';
+    try{ winSound.currentTime=0; winSound.play(); }catch(e){}
   } else {
-    result.textContent='😆 再接再厲！';
+    result.textContent = '😆 再接再厲！';
   }
 }
+
+// drag/lever handlers
+handle.addEventListener('pointerdown', (e)=>{
+  dragging=true; startY=e.clientY; distance=0;
+  try{ leverSound.currentTime=0; leverSound.play(); }catch(e){}
+  try{ handle.setPointerCapture && handle.setPointerCapture(e.pointerId); }catch(e){}
+});
+handle.addEventListener('pointermove', (e)=>{
+  if(!dragging) return;
+  distance = e.clientY - startY;
+  if(distance<0) distance=0;
+  if(distance>100) distance=100;
+  handle.style.transform = `translateY(${distance}px)`;
+});
+function endDrag(e){
+  if(!dragging) return;
+  dragging=false;
+  try{ handle.releasePointerCapture && handle.releasePointerCapture(e && e.pointerId); }catch(e){}
+  handle.style.transform='translateY(0px)';
+  if(distance>60) spin();
+  distance=0;
+}
+handle.addEventListener('pointerup', endDrag);
+handle.addEventListener('pointercancel', endDrag);
+handle.addEventListener('pointerleave', endDrag);
+
+// keyboard accessibility
+handle.tabIndex=0;
+handle.addEventListener('keydown', (e)=>{
+  if(e.code === 'Space' || e.code === 'Enter'){
+    e.preventDefault();
+    try{ leverSound.currentTime=0; leverSound.play(); }catch(err){}
+    spin();
+  }
+});
+
+// helper to force a win for testing
+window.forceWin = function(icon){
+  for(let r=0;r<3;r++){
+    cells[r*3].innerHTML = icon;
+    cells[r*3+1].innerHTML = icon;
+    cells[r*3+2].innerHTML = icon;
+  }
+  checkWin(Array.from(cells).map(c=>c.innerHTML));
+};
+</script>
+
+</body>
+</html>
