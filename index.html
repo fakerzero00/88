@@ -85,6 +85,27 @@ function getAudioCtx(){
   return audioCtx;
 }
 
+// Try to ensure audio context is resumed on first user gesture
+let _audioInitialized = false;
+function initAudioOnGesture(){
+  if(_audioInitialized) return;
+  _audioInitialized = true;
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  // some browsers require resume() in a user gesture
+  if(ctx.state === 'suspended'){
+    ctx.resume().catch(()=>{});
+  }
+}
+// Attach a one-time listener to resume AudioContext on first meaningful gesture
+['pointerdown','keydown','touchstart','click'].forEach(evt => {
+  window.addEventListener(evt, function onceInitAudio(e){
+    initAudioOnGesture();
+    // remove the listener for performance
+    window.removeEventListener(evt, onceInitAudio);
+  });
+});
+
 // Sound generators using WebAudio when audio elements have no src
 function playLeverTone(){
   const ctx=getAudioCtx(); if(!ctx) return;
@@ -96,37 +117,49 @@ function playLeverTone(){
   g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.18);
   o.connect(g); g.connect(ctx.destination);
   o.start(); o.stop(ctx.currentTime+0.18);
+  // cleanup after stop
+  setTimeout(()=>{ try{ o.disconnect(); g.disconnect(); }catch(e){} }, 300);
 }
 
-let spinOsc=null, spinGain=null;
+let spinOsc=null, spinGain=null, spinLFO=null, spinLFOGain=null;
 function startSpinTone(){
   const ctx=getAudioCtx(); if(!ctx) return;
-  // continuous low hum with slight wobble
   stopSpinTone();
+  // continuous low hum with slight wobble
   spinOsc = ctx.createOscillator();
   spinGain = ctx.createGain();
-  spinOsc.type='sawtooth';
+  spinOsc.type = 'sawtooth';
   spinOsc.frequency.value = 120; // base
   spinGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  spinGain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime+0.05);
+  spinGain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.05);
   spinOsc.connect(spinGain); spinGain.connect(ctx.destination);
   spinOsc.start();
   // add slow vibrato
-  const lfo = ctx.createOscillator();
-  const lfoGain = ctx.createGain();
-  lfo.frequency.value = 4;
-  lfoGain.gain.value = 8;
-  lfo.connect(lfoGain); lfoGain.connect(spinOsc.frequency);
-  lfo.start();
-  // store lfo for stop
-  spinOsc._lfo = lfo;
+  spinLFO = ctx.createOscillator();
+  spinLFOGain = ctx.createGain();
+  spinLFO.frequency.value = 4;
+  spinLFOGain.gain.value = 8; // modulation depth
+  spinLFO.connect(spinLFOGain);
+  spinLFOGain.connect(spinOsc.frequency);
+  spinLFO.start();
 }
+
 function stopSpinTone(){
   if(!spinOsc) return;
-  try{ const ctx = getAudioCtx(); spinGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.08); }catch(e){}
-  try{ spinOsc._lfo && spinOsc._lfo.stop(); }catch(e){}
-  try{ spinOsc.stop(getAudioCtx().currentTime+0.09); }catch(e){}
-  spinOsc=null; spinGain=null;
+  try{
+    const ctx = getAudioCtx();
+    if(spinGain && ctx) spinGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
+  }catch(e){}
+  try{ spinLFO && spinLFO.stop(); }catch(e){}
+  try{ spinOsc.stop(getAudioCtx().currentTime + 0.09); }catch(e){}
+  // disconnect after a short delay
+  setTimeout(()=>{
+    try{ spinLFOGain && spinLFOGain.disconnect(); }catch(e){}
+    try{ spinLFO && spinLFO.disconnect(); }catch(e){}
+    try{ spinGain && spinGain.disconnect(); }catch(e){}
+    try{ spinOsc && spinOsc.disconnect(); }catch(e){}
+    spinOsc=null; spinGain=null; spinLFO=null; spinLFOGain=null;
+  }, 250);
 }
 
 function playWinMelody(){
@@ -142,15 +175,19 @@ function playWinMelody(){
     g.gain.exponentialRampToValueAtTime(0.0001, now + i*0.12 + 0.32);
     o.connect(g); g.connect(ctx.destination);
     o.start(now + i*0.12); o.stop(now + i*0.12 + 0.32);
+    // cleanup after
+    setTimeout(()=>{ try{ o.disconnect(); g.disconnect(); }catch(e){} }, 800);
   });
 }
 
 // Helper: if an audio element has src, play it; otherwise use WebAudio fallback
 function playAudioElementOrFallback(elem, fallback){
   try{
+    // ensure audio context has been started by user gesture
+    initAudioOnGesture();
     const src = (elem && (elem.currentSrc || elem.src || '')).trim();
     if(src){
-      elem.currentTime = 0; const p = elem.play(); if(p) p.catch(()=>{});
+      try{ elem.currentTime = 0; const p = elem.play(); if(p) p.catch(()=>{}); }catch(e){}
       return;
     }
   }catch(e){}
