@@ -30,9 +30,10 @@ h1{color:#ffd85a}
 
 <body>
 <!-- 音效 (若提供實體檔案會自動播放，否則使用內建 WebAudio 產生音效) -->
-<audio id="leverSound"></audio>
-<audio id="spinSound"></audio>
-<audio id="winSound"></audio>
+<!-- Embedded tiny audio data URIs so page has sounds without separate files -->
+<audio id="leverSound" preload="auto" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA="></audio>
+<audio id="spinSound" preload="auto" src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
+<audio id="winSound" preload="auto" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA="></audio>
 
 <div class="machine">
   <h1>🎰 幸運拉霸機</h1>
