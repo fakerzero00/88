@@ -58,7 +58,6 @@ h1{color:#ffd85a}
   </div>
 
   <div class="result" id="result">拉下拉桿開始</div>
-  <button id="testSpin" class="test-btn" aria-label="測試旋轉">測試旋轉</button>
 </div>
 
 <script>
@@ -70,7 +69,6 @@ const result=document.getElementById('result');
 const leverAudioElem=document.getElementById('leverSound');
 const spinAudioElem=document.getElementById('spinSound');
 const winAudioElem=document.getElementById('winSound');
-const testSpin=document.getElementById('testSpin');
 
 // State
 let dragging=false,startY=0,distance=0,running=false;
@@ -232,8 +230,7 @@ function endDrag(e){ if(!dragging) return; dragging=false; try{ handle.releasePo
   handle.style.transform='translateY(0px)'; if(distance>60) spin(); distance=0; }
 handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag); handle.addEventListener('pointerleave', endDrag);
 
-// Test button and keyboard accessibility
-if(testSpin) testSpin.addEventListener('click', spin);
+// Test button removed: keyboard accessibility still available via handle
 handle.tabIndex=0; handle.addEventListener('keydown',(e)=>{ if(e.code==='Space' || e.code==='Enter'){ e.preventDefault(); playAudioElementOrFallback(leverAudioElem, playLeverTone); spin(); } });
 
 // Developer helper: force win with a given icon (e.g., forceWin('🔥'))
