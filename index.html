@@ -8,7 +8,7 @@
 
 <style>
 *{box-sizing:border-box}
-}
+/* Layout: center on desktop and mobile */
 body{
   margin:0;
   min-height:100vh;
@@ -17,9 +17,11 @@ body{
   align-items:center;
   background:#140906;
   font-family:"Microsoft JhengHei",Arial;
+  padding:16px; /* avoid touching edges on small screens */
 }
+/* machine width is responsive */
 .machine{
-  width:360px;
+  width: min(360px, 92vw);
   padding:25px;
   background:linear-gradient(145deg,#b46b22,#351505);
   border-radius:30px;
@@ -27,27 +29,29 @@ body{
   text-align:center;
   position:relative;
   box-shadow:0 0 40px #000;
+  margin:0 auto; /* ensure centered if flex isn't applied */
 }
 h1{ color:#ffd85a }
+/* screen grid uses flexible columns so cells scale on mobile */
 .screen{
   background:#050505;
   padding:15px;
   border:8px solid #e0a33b;
   border-radius:20px;
   display:grid;
-  grid-template-columns:repeat(3,80px);
+  grid-template-columns:repeat(3,1fr);
   gap:8px;
-  justify-content:center;
+  justify-items:center;
 }
 .cell{
-  width:80px;
-  height:80px;
+  width:100%;
+  aspect-ratio:1/1; /* keep square */
   background:white;
   border-radius:12px;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:45px;
+  font-size:clamp(28px,6vw,45px);
   transition:transform .18s ease, box-shadow .18s ease;
 }
 .spin{ animation:roll .1s infinite }
@@ -63,6 +67,12 @@ h1{ color:#ffd85a }
 .result{ margin-top:25px; font-size:22px; color:#ffe27a }
 .test-btn{ margin-top:12px; padding:8px 12px; border-radius:8px; border:none; background:#ffd85a; color:#2b1709; font-weight:600; cursor:pointer }
 .test-btn:active{ transform:translateY(1px) }
+/* Responsive tweaks for small screens */
+@media (max-width:420px){
+  .lever{ right:-55px; }
+  .handle{ width:52px; height:52px; left:6px }
+  .machine{ padding:18px }
+}
 </style>
 </head>
 
