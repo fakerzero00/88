@@ -1,2 +1,298 @@
-# 88
-88節活動
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>幸運拉霸機</title>
+<style>
+*{
+box-sizing:border-box;
+}
+body{
+margin:0;
+min-height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+background:#140906;
+font-family:
+"Microsoft JhengHei",
+Arial;
+overflow-x:hidden;
+}
+.machine{
+width:360px;
+margin-right:70px;
+padding:25px;
+background:
+linear-gradient(
+145deg,
+#b46b22,
+#351505
+);
+border-radius:30px;
+color:white;
+text-align:center;
+position:relative;
+box-shadow:
+0 0 40px #000;
+}
+h1{
+color:#ffd85a;
+}
+.screen{
+background:#050505;
+padding:15px;
+border:8px solid #e0a33b;
+border-radius:20px;
+display:grid;
+grid-template-columns:
+repeat(3,80px);
+gap:8px;
+justify-content:center;
+}
+.cell{
+width:80px;
+height:80px;
+background:white;
+border-radius:12px;
+display:flex;
+align-items:center;
+justify-content:center;
+font-size:45px;
+}
+.spin{
+animation:
+roll .1s infinite;
+}
+@keyframes roll{
+0%{
+transform:translateY(-15px);
+}
+50%{
+transform:translateY(15px);
+}
+100%{
+transform:translateY(-15px);
+}
+}
+.win{
+animation:
+win .5s infinite alternate;
+}
+@keyframes win{
+from{
+transform:scale(1);
+box-shadow:
+0 0 5px gold;
+}
+to{
+transform:scale(1.15);
+box-shadow:
+0 0 30px gold;
+}
+}
+/* 拉桿 */
+.lever{
+position:absolute;
+right:-70px;
+top:50px;
+width:80px;
+height:260px;
+z-index:999;
+}
+.rod{
+posItion:absolute;
+top:50px;
+left:33px;
+width:14px;
+height:170px;
+background:
+linear-gradient(
+90deg,
+#777,
+#fff,
+#777
+);
+border-radius:10px;
+}
+.handle{
+posItion:absolute;
+top:0;
+left:8px;
+width:60px;
+height:60px;
+background:#e63232;
+border-radius:50%;
+cursor:grab;
+z-index:9999;
+box-shadow:
+0 8px 15px rgba(0,0,0,.7);
+touch-action:none;
+}
+.result{
+margin-top:25px;
+font-size:22px;
+color:#ffe27a;
+}
+</style>
+</head>
+<body>
+<audio id="leverSound"></audio>
+<audio id="spinSound"></audio>
+<audio id="winSound"></audio>
+<div class="machine">
+<h1>
+🎰 幸運拉霸機
+</h1>
+<div class="screen">
+<div class="cell">🥩</div>
+<div class="cell">🎁</div>
+<div class="cell">🦐</div>
+<div class="cell">🔥</div>
+<div class="cell">🍖</div>
+<div class="cell">🥩</div>
+<div class="cell">🦐</div>
+<div class="cell">🎁</div>
+<div class="cell">🔥</div>
+</div>
+<div class="lever">
+<div class="handle" id="handle"></div>
+<div class="rod"></div>
+</div>
+<div class="result" id="result">
+拉下拉桿開始
+</div>
+</div>
+<script>
+const icons=[
+"🥩",
+"🍖",
+"🦐",
+"🔥",
+"🎁"
+];
+const cells =
+document.querySelectorAll(".cell");
+const handle =
+document.getElementById("handle");
+const result =
+document.getElementById("result");
+const leverSound =
+document.getElementById("leverSound");
+const spinSound =
+document.getElementById("spinSound");
+const winSound =
+document.getElementById("winSound");
+let dragging=false;
+let startY=0;
+let distance=0;
+let running=false;
+function randomIcon(){
+return icons[
+Math.floor(
+Math.random()*icons.length
+)
+];
+}
+function playSound(sound){
+if(!sound)
+return;
+try{
+sound.currentTime=0;
+let p=sound.play();
+if(p){
+p.catch(()=>{});
+}
+}catch(e){}
+}
+function spin(){
+if(running)
+return;
+running=true;
+result.innerHTML=
+"🎰 旋轉中...";
+playSound(spinSound);
+cells.forEach(c=>{
+c.classList.add("spin");
+c.classList.remove("win");
+});
+let timer=setInterval(()=>{
+cells.forEach(c=>{
+c.innerHTML=randomIcon();
+});
+},80);
+setTimeout(()=>{
+clearInterval(timer);
+let data=[];
+cells.forEach(c=>{
+c.classList.remove("spin");
+let icon=randomIcon();
+c.innerHTML=icon;
+data.push(icon);
+});
+checkWin(data);
+running=false;
+},2000);
+}
+function checkWin(data){
+let win=false;
+for(let i=0;i<9;i+=3){
+if(
+data[i]===data[i+1]
+&&
+data[i+1]===data[i+2]
+){
+win=true;
+}
+}
+if(win){
+result.innerHTML=
+"🎉 恭喜中獎！";
+playSound(winSound);
+cells.forEach(c=>{
+c.classList.add("win");
+});
+}else{
+result.innerHTML=
+"😆 再接再厲！";
+}
+}
+handle.addEventListener(
+"pointerdown",
+function(e){
+dragging=true;
+startY=e.clientY;
+playSound(leverSound);
+handle.setPointerCapture(
+e.pointerId
+);
+});
+handle.addEventListener(
+"pointermove",
+function(e){
+if(!dragging)
+return;
+distance=e.clientY-startY;
+if(distance<0)
+distance=0;
+if(distance>100)
+distance=100;
+handle.style.transform=
+`translateY(${distance}px)`;
+});
+handle.addEventListener(
+"pointerup",
+function(){
+dragging=false;
+handle.style.transform=
+"translateY(0px)";
+if(distance>60){
+spin();
+}
+distance=0;
+});
+</script>
+</body>
+</html>
