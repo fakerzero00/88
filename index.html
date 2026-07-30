@@ -12,9 +12,11 @@ body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:c
 .machine{width:360px;margin-right:70px;padding:25px;background:linear-gradient(145deg,#b46b22,#351505);border-radius:30px;color:white;text-align:center;position:relative;box-shadow:0 0 40px #000}
 h1{color:#ffd85a}
 .screen{background:#050505;padding:15px;border:8px solid #e0a33b;border-radius:20px;display:grid;grid-template-columns:repeat(3,80px);gap:8px;justify-content:center}
-.cell{width:80px;height:80px;background:white;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:45px}
+.cell{width:80px;height:80px;background:white;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:45px;transition:transform .18s ease, box-shadow .18s ease}
 .spin{animation:roll .1s infinite}
 @keyframes roll{0%{transform:translateY(-15px)}50%{transform:translateY(15px)}100%{transform:translateY(-15px)}}
+/* stronger win glow */
+.cell.win{transform:scale(1.12);box-shadow:0 0 28px 8px rgba(255,215,0,0.95);border-radius:14px}
 .win{animation:win .5s infinite alternate}
 @keyframes win{from{transform:scale(1);box-shadow:0 0 5px gold}to{transform:scale(1.15);box-shadow:0 0 30px gold}}
 /* 拉桿 */
@@ -213,11 +215,38 @@ function spin(){
     running=false;
   },2000);
 }
-function checkWin(data){
-  let win=false;
-  for(let i=0;i<9;i+=3){ if(data[i]===data[i+1] && data[i+1]===data[i+2]) win=true; }
-  if(win){ result.textContent='🎉 恭喜中獎！'; playAudioElementOrFallback(winAudioElem, playWinMelody); cells.forEach(c=>c.classList.add('win')); }
-  else{ result.textContent='😆 再接再厲！'; }
+
+// Robust win detection: read current cell text, normalize and check rows/cols/diagonals
+function checkWin(passedData){
+  // Prefer reading from DOM to avoid any formatting mismatch
+  const data = Array.from(cells).map(c => (c.textContent || '').trim());
+
+  const lines = [
+    [0,1,2],[3,4,5],[6,7,8], // rows
+    [0,3,6],[1,4,7],[2,5,8], // cols
+    [0,4,8],[2,4,6]          // diagonals
+  ];
+  const winners = new Set();
+
+  lines.forEach(([a,b,c])=>{
+    if(data[a] && data[a]===data[b] && data[b]===data[c]){
+      winners.add(a); winners.add(b); winners.add(c);
+    }
+  });
+
+  // apply/remove win class per cell
+  cells.forEach((cell, idx)=>{
+    if(winners.has(idx)) cell.classList.add('win');
+    else cell.classList.remove('win');
+  });
+
+  if(winners.size > 0){
+    result.textContent='🎉 恭喜中獎！';
+    // play only once
+    try{ playAudioElementOrFallback(winAudioElem, playWinMelody); }catch(e){}
+  } else {
+    result.textContent='😆 再接再厲！';
+  }
 }
 
 // 拉桿控制
@@ -230,7 +259,7 @@ function endDrag(e){ if(!dragging) return; dragging=false; try{ handle.releasePo
   handle.style.transform='translateY(0px)'; if(distance>60) spin(); distance=0; }
 handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag); handle.addEventListener('pointerleave', endDrag);
 
-// Test button removed: keyboard accessibility still available via handle
+// keyboard accessibility
 handle.tabIndex=0; handle.addEventListener('keydown',(e)=>{ if(e.code==='Space' || e.code==='Enter'){ e.preventDefault(); playAudioElementOrFallback(leverAudioElem, playLeverTone); spin(); } });
 
 // Developer helper: force win with a given icon (e.g., forceWin('🔥'))
@@ -238,7 +267,7 @@ window.forceWin = function(icon){
   for(let r=0;r<3;r++){
     cells[r*3].innerHTML = icon; cells[r*3+1].innerHTML = icon; cells[r*3+2].innerHTML = icon;
   }
-  checkWin(Array.from(cells).map(c=>c.innerHTML));
+  checkWin();
 };
 
 </script>
