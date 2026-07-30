@@ -79,9 +79,9 @@ h1{ color:#ffd85a }
 <body>
 
 <!-- audio (external files) -->
-<audio id="leverSound"><source src="https://cdn.pixabay.com/audio/2022/03/15/audio_2d7f1f4b9c.mp3"></audio>
-<audio id="spinSound"><source src="https://cdn.pixabay.com/audio/2022/03/10/audio_8c6b2f9d90.mp3"></audio>
-<audio id="winSound"><source src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3"></audio>
+<audio id="leverSound" preload="auto" src="https://cdn.pixabay.com/audio/2022/03/15/audio_2d7f1f4b9c.mp3"></audio>
+<audio id="spinSound" preload="auto" src="https://cdn.pixabay.com/audio/2022/03/10/audio_8c6b2f9d90.mp3"></audio>
+<audio id="winSound" preload="auto" src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3"></audio>
 
 <div class="machine">
   <h1>🎰 幸運拉霸機</h1>
@@ -117,159 +117,104 @@ const leverSound=document.getElementById('leverSound');
 const spinSound=document.getElementById('spinSound');
 const winSound=document.getElementById('winSound');
 
-let dragging=false, startY=0, distance=0, running=false;
-
-function randomIcon(){ return icons[Math.floor(Math.random()*icons.length)]; }
-
-function spin(){
-  if(running) return;
-  running=true;
-  result.textContent='🎰 旋轉中...';
-
-  // stop previous wins
-  cells.forEach(c=>{ c.classList.remove('win','pulse'); c.classList.add('spin'); });
-
-  // spin sound
-  try{ spinSound.loop = true; spinSound.currentTime = 0; spinSound.play(); }catch(e){}
-
-  const timer = setInterval(()=>{ cells.forEach(c=>c.innerHTML = randomIcon()); }, 80);
-
-  setTimeout(()=>{
-    clearInterval(timer);
-    try{ spinSound.pause(); spinSound.currentTime = 0; }catch(e){}
-
-    // set final icons
-    const data = [];
-    cells.forEach(c=>{ c.classList.remove('spin'); const icon = randomIcon(); c.innerHTML = icon; data.push(icon); });
-
-    // check win
-    checkWin(data);
-    running=false;
-  }, 2000);
-}
-
-// check any winning line (rows, cols, diagonals) and highlight cells
-function checkWin(passedData){
-  // passedData expected length 9; but read from DOM to be robust
-  const data = passedData && passedData.length===9 ? passedData.map(s=> (s||'').toString().trim()) : Array.from(cells).map(c=> (c.textContent||'').trim());
-
-  const lines = [
-    [0,1,2],[3,4,5],[6,7,8], // rows
-    [0,3,6],[1,4,7],[2,5,8], // cols
-    [0,4,8],[2,4,6]          // diags
-  ];
-  const winners = new Set();
-
-  for(const [a,b,c] of lines){
-    if(data[a] && data[a] === data[b] && data[b] === data[c]){
-      winners.add(a); winners.add(b); winners.add(c);
-    }
-  }
-
-  // apply classes
-  cells.forEach((cell, idx)=>{
-    if(winners.has(idx)){
-      cell.classList.add('win');
-      // pulse for visibility
-      setTimeout(()=>cell.classList.add('pulse'), 30);
-    } else {
-      cell.classList.remove('win','pulse');
-    }
-  });
-
-  if(winners.size>0){
-    result.textContent = '🎉 恭喜中獎！';
-    try{ winSound.currentTime=0; winSound.play(); }catch(e){}
-  } else {
-    result.textContent = '😆 再接再厲！';
-  }
-}
-
-// drag/lever handlers
-handle.addEventListener('pointerdown', (e)=>{
-  dragging=true; startY=e.clientY; distance=0;
-  try{ leverSound.currentTime=0; leverSound.play(); }catch(e){}
-  try{ handle.setPointerCapture && handle.setPointerCapture(e.pointerId); }catch(e){}
-});
-handle.addEventListener('pointermove', (e)=>{
-  if(!dragging) return; distance = e.clientY - startY; if(distance<0) distance=0; if(distance>100) distance=100; handle.style.transform = `translateY(${distance}px)`; });
-function endDrag(e){ if(!dragging) return; dragging=false; try{ handle.releasePointerCapture && handle.releasePointerCapture(e && e.pointerId); }catch(e){} handle.style.transform='translateY(0px)'; if(distance>60) spin(); distance=0; }
-handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag); handle.addEventListener('pointerleave', endDrag);
-
-// keyboard accessibility
-handle.tabIndex=0;
-handle.addEventListener('keydown', (e)=>{ if(e.code === 'Space' || e.code === 'Enter'){ e.preventDefault(); try{ leverSound.currentTime=0; leverSound.play(); }catch(err){} spin(); } });
-
-// helper to force a win for testing
-window.forceWin = function(icon){
-  for(let r=0;r<3;r++){ cells[r*3].innerHTML = icon; cells[r*3+1].innerHTML = icon; cells[r*3+2].innerHTML = icon; }
-  checkWin(Array.from(cells).map(c=>c.innerHTML));
-};
-
-</script>// --- WebAudio fallback + helper to play audio element or fallback ---
-// lazy AudioContext
+// lazy AudioContext for fallbacks
 let _audioCtx = null;
 function getAudioCtx(){
   if(!_audioCtx){
     const C = window.AudioContext || window.webkitAudioContext;
     if(!C) return null;
     _audioCtx = new C();
-    // try resume if suspended (some browsers require user gesture)
-    if(_audioCtx.state === 'suspended'){
-      _audioCtx.resume().catch(()=>{});
-    }
+    if(_audioCtx.state === 'suspended') _audioCtx.resume().catch(()=>{});
   }
   return _audioCtx;
 }
 
-// small click fallback for lever
+// small click fallback for lever (immediate)
 function playLeverTone(){
   const ctx = getAudioCtx(); if(!ctx) return;
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.type = 'square';
-  o.frequency.value = 880;
+  const o = ctx.createOscillator(); const g = ctx.createGain();
+  o.type='square'; o.frequency.value=880;
   g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.005);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+  g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime+0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.15);
   o.connect(g); g.connect(ctx.destination);
-  o.start();
-  o.stop(ctx.currentTime + 0.15);
-  // cleanup
+  o.start(); o.stop(ctx.currentTime+0.15);
   setTimeout(()=>{ try{ o.disconnect(); g.disconnect(); }catch(e){} }, 300);
 }
 
-// Generic helper: try play element, otherwise run fallback
+// generic helper: try play element, otherwise run fallback
 function playElemOrFallback(elem, fallback){
   try{
-    // ensure AudioContext is ready (resume if needed) on first gesture
     getAudioCtx();
     const src = elem && (elem.currentSrc || elem.src || '');
     if(src && src.trim()){
-      // try to play audio element (user gesture should allow this)
-      elem.currentTime = 0;
-      const p = elem.play();
-      if(p && typeof p.catch === 'function'){
-        p.catch(()=>{ try{ if(fallback) fallback(); }catch(e){} });
-      }
-      return;
+      try{
+        elem.currentTime = 0;
+        const p = elem.play();
+        if(p && typeof p.catch === 'function') p.catch(()=>{ try{ if(fallback) fallback(); }catch(e){} });
+        return;
+      }catch(e){ }
     }
   }catch(e){}
-  // fallback immediately
   try{ if(fallback) fallback(); }catch(e){}
 }
 
-// Ensure AudioContext resume on first meaningful gesture (one-time)
-function initAudioOnFirstGesture(){
-  const ctx = getAudioCtx();
-  if(!ctx) return;
-  if(ctx.state === 'suspended'){
-    ctx.resume().catch(()=>{});
-  }
+// utility: random icon
+function randomIcon(){ return icons[Math.floor(Math.random()*icons.length)]; }
+
+let dragging=false, startY=0, distance=0, running=false;
+
+function spin(){
+  if(running) return;
+  running=true;
+  result.textContent='🎰 旋轉中...';
+  cells.forEach(c=>{ c.classList.remove('win','pulse'); c.classList.add('spin'); });
+  try{ if(spinSound){ spinSound.loop=true; spinSound.currentTime=0; const p=spinSound.play(); if(p && p.catch) p.catch(()=>{}); } }catch(e){}
+  const timer = setInterval(()=>{ cells.forEach(c=>c.innerHTML=randomIcon()); }, 80);
+  setTimeout(()=>{
+    clearInterval(timer);
+    try{ if(spinSound){ spinSound.pause(); spinSound.currentTime=0; } }catch(e){}
+    const data=[];
+    cells.forEach(c=>{ c.classList.remove('spin'); const icon=randomIcon(); c.innerHTML=icon; data.push(icon); });
+    checkWin(data);
+    running=false;
+  },2000);
 }
-// attach one-time listeners (optional safety)
-['pointerdown','keydown','touch](#)_
-
+
+// check any winning line
+function checkWin(passedData){
+  const data = passedData && passedData.length===9 ? passedData.map(s=> (s||'').toString().trim()) : Array.from(cells).map(c=> (c.textContent||'').trim());
+  const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+  const winners = new Set();
+  for(const [a,b,c] of lines){ if(data[a] && data[a]===data[b] && data[b]===data[c]){ winners.add(a); winners.add(b); winners.add(c); } }
+  cells.forEach((cell, idx)=>{ if(winners.has(idx)){ cell.classList.add('win'); setTimeout(()=>cell.classList.add('pulse'),30); } else { cell.classList.remove('win','pulse'); } });
+  if(winners.size>0){ result.textContent='🎉 恭喜中獎！'; try{ if(winSound){ winSound.currentTime=0; const p=winSound.play(); if(p && p.catch) p.catch(()=>{}); } }catch(e){} } else { result.textContent='😆 再接再厲！'; }
+}
+
+// lever handlers: immediate WebAudio click then try to play element
+handle.addEventListener('pointerdown', (e)=>{
+  dragging=true; startY=e.clientY; distance=0;
+  // immediate synthesized click for guaranteed feedback
+  try{ playLeverTone(); }catch(err){}
+  // then attempt to play external audio if available
+  try{ if(leverSound){ leverSound.currentTime=0; const p=leverSound.play(); if(p && p.catch) p.catch(()=>{}); } }catch(err){}
+  try{ handle.setPointerCapture && handle.setPointerCapture(e.pointerId); }catch(e){}
+});
+handle.addEventListener('pointermove', (e)=>{ if(!dragging) return; distance=e.clientY-startY; if(distance<0) distance=0; if(distance>100) distance=100; handle.style.transform=`translateY(${distance}px)`; });
+function endDrag(e){ if(!dragging) return; dragging=false; try{ handle.releasePointerCapture && handle.releasePointerCapture(e && e.pointerId); }catch(e){} handle.style.transform='translateY(0px)'; if(distance>60) spin(); distance=0; }
+handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag); handle.addEventListener('pointerleave', endDrag);
+
+// keyboard accessibility: same order (synthesized click first)
+handle.tabIndex=0;
+handle.addEventListener('keydown', (e)=>{ if(e.code==='Space' || e.code==='Enter'){ e.preventDefault(); try{ playLeverTone(); }catch(err){} try{ if(leverSound){ leverSound.currentTime=0; const p=leverSound.play(); if(p && p.catch) p.catch(()=>{}); } }catch(err){} spin(); } });
+
+// force win helper
+window.forceWin = function(icon){ for(let r=0;r<3;r++){ cells[r*3].innerHTML=icon; cells[r*3+1].innerHTML=icon; cells[r*3+2].innerHTML=icon; } checkWin(Array.from(cells).map(c=>c.innerHTML)); };
+
+// resume AudioContext on first gesture (safety)
+['pointerdown','keydown','touchstart','click'].forEach(evt=>{ const once=function(){ getAudioCtx(); window.removeEventListener(evt, once); }; window.addEventListener(evt, once); });
+
+</script>
 
 </body>
 </html>
