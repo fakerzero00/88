@@ -206,7 +206,70 @@ window.forceWin = function(icon){
   checkWin(Array.from(cells).map(c=>c.innerHTML));
 };
 
-</script>
+</script>// --- WebAudio fallback + helper to play audio element or fallback ---
+// lazy AudioContext
+let _audioCtx = null;
+function getAudioCtx(){
+  if(!_audioCtx){
+    const C = window.AudioContext || window.webkitAudioContext;
+    if(!C) return null;
+    _audioCtx = new C();
+    // try resume if suspended (some browsers require user gesture)
+    if(_audioCtx.state === 'suspended'){
+      _audioCtx.resume().catch(()=>{});
+    }
+  }
+  return _audioCtx;
+}
+
+// small click fallback for lever
+function playLeverTone(){
+  const ctx = getAudioCtx(); if(!ctx) return;
+  const o = ctx.createOscillator();
+  const g = ctx.createGain();
+  o.type = 'square';
+  o.frequency.value = 880;
+  g.gain.setValueAtTime(0.0001, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.005);
+  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.15);
+  o.connect(g); g.connect(ctx.destination);
+  o.start();
+  o.stop(ctx.currentTime + 0.15);
+  // cleanup
+  setTimeout(()=>{ try{ o.disconnect(); g.disconnect(); }catch(e){} }, 300);
+}
+
+// Generic helper: try play element, otherwise run fallback
+function playElemOrFallback(elem, fallback){
+  try{
+    // ensure AudioContext is ready (resume if needed) on first gesture
+    getAudioCtx();
+    const src = elem && (elem.currentSrc || elem.src || '');
+    if(src && src.trim()){
+      // try to play audio element (user gesture should allow this)
+      elem.currentTime = 0;
+      const p = elem.play();
+      if(p && typeof p.catch === 'function'){
+        p.catch(()=>{ try{ if(fallback) fallback(); }catch(e){} });
+      }
+      return;
+    }
+  }catch(e){}
+  // fallback immediately
+  try{ if(fallback) fallback(); }catch(e){}
+}
+
+// Ensure AudioContext resume on first meaningful gesture (one-time)
+function initAudioOnFirstGesture(){
+  const ctx = getAudioCtx();
+  if(!ctx) return;
+  if(ctx.state === 'suspended'){
+    ctx.resume().catch(()=>{});
+  }
+}
+// attach one-time listeners (optional safety)
+['pointerdown','keydown','touch](#)_
+
 
 </body>
 </html>
