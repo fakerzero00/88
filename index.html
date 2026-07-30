@@ -8,38 +8,73 @@
 
 <style>
 *{box-sizing:border-box}
-body{margin:0;min-height:100vh;display:flex;justify-content:center;align-items:center;background:#140906;font-family:"Microsoft JhengHei",Arial;overflow-x:hidden}
-.machine{width:360px;margin-right:70px;padding:25px;background:linear-gradient(145deg,#b46b22,#351505);border-radius:30px;color:white;text-align:center;position:relative;box-shadow:0 0 40px #000}
-h1{color:#ffd85a}
-.screen{background:#050505;padding:15px;border:8px solid #e0a33b;border-radius:20px;display:grid;grid-template-columns:repeat(3,80px);gap:8px;justify-content:center}
-.cell{width:80px;height:80px;background:white;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:45px;transition:transform .18s ease, box-shadow .18s ease}
-.spin{animation:roll .1s infinite}
-@keyframes roll{0%{transform:translateY(-15px)}50%{transform:translateY(15px)}100%{transform:translateY(-15px)}}
-/* stronger win glow */
-.cell.win{transform:scale(1.12);box-shadow:0 0 28px 8px rgba(255,215,0,0.95);border-radius:14px}
-.win{animation:win .5s infinite alternate}
-@keyframes win{from{transform:scale(1);box-shadow:0 0 5px gold}to{transform:scale(1.15);box-shadow:0 0 30px gold}}
+}
+body{
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  background:#140906;
+  font-family:"Microsoft JhengHei",Arial;
+}
+.machine{
+  width:360px;
+  padding:25px;
+  background:linear-gradient(145deg,#b46b22,#351505);
+  border-radius:30px;
+  color:white;
+  text-align:center;
+  position:relative;
+  box-shadow:0 0 40px #000;
+}
+h1{ color:#ffd85a }
+.screen{
+  background:#050505;
+  padding:15px;
+  border:8px solid #e0a33b;
+  border-radius:20px;
+  display:grid;
+  grid-template-columns:repeat(3,80px);
+  gap:8px;
+  justify-content:center;
+}
+.cell{
+  width:80px;
+  height:80px;
+  background:white;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:45px;
+  transition:transform .18s ease, box-shadow .18s ease;
+}
+.spin{ animation:roll .1s infinite }
+@keyframes roll{ 0%{transform:translateY(-15px)}50%{transform:translateY(15px)}100%{transform:translateY(-15px)} }
+/* win effect */
+.cell.win{ transform:scale(1.12); box-shadow:0 0 28px 8px rgba(255,215,0,0.95); border-radius:14px }
+@keyframes winPulse{ 0%{box-shadow:0 0 12px 2px rgba(255,215,0,0.6)}50%{box-shadow:0 0 30px 10px rgba(255,215,0,0.95)}100%{box-shadow:0 0 12px 2px rgba(255,215,0,0.6)} }
+.cell.win.pulse{ animation: winPulse 0.9s ease-in-out infinite }
 /* 拉桿 */
-.lever{position:absolute;right:-70px;top:50px;width:80px;height:260px;z-index:999}
-.rod{position:absolute;top:50px;left:33px;width:14px;height:170px;background:linear-gradient(90deg,#777,#fff,#777);border-radius:10px}
-.handle{position:absolute;top:0;left:8px;width:60px;height:60px;background:#e63232;border-radius:50%;cursor:grab;z-index:9999;box-shadow:0 8px 15px rgba(0,0,0,.7);touch-action:none}
-.result{margin-top:25px;font-size:22px;color:#ffe27a}
-/* 測試用按鈕 */
-.test-btn{margin-top:12px;padding:8px 12px;border-radius:8px;border:none;background:#ffd85a;color:#2b1709;font-weight:600;cursor:pointer}
-.test-btn:active{transform:translateY(1px)}
+.lever{ position:absolute; right:-85px; top:50px; width:80px; height:260px; z-index:20 }
+.rod{ position:absolute; top:50px; left:33px; width:14px; height:170px; background:linear-gradient(90deg,#777,#fff,#777); border-radius:10px }
+.handle{ position:absolute; top:0; left:8px; width:60px; height:60px; background:#e63232; border-radius:50%; cursor:grab; z-index:30; box-shadow:0 8px 15px rgba(0,0,0,.7); touch-action:none }
+.result{ margin-top:25px; font-size:22px; color:#ffe27a }
+.test-btn{ margin-top:12px; padding:8px 12px; border-radius:8px; border:none; background:#ffd85a; color:#2b1709; font-weight:600; cursor:pointer }
+.test-btn:active{ transform:translateY(1px) }
 </style>
 </head>
 
 <body>
-<!-- 音效 (若提供實體檔案會自動播放，否則使用內建 WebAudio 產生音效) -->
-<!-- Embedded tiny audio data URIs so page has sounds without separate files -->
-<audio id="leverSound" preload="auto" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA="></audio>
-<audio id="spinSound" preload="auto" src="data:audio/wav;base64,UklGRhQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
-<audio id="winSound" preload="auto" src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAIlYAAESsAAACABAAZGF0YQAAAAA="></audio>
+
+<!-- audio (external files) -->
+<audio id="leverSound"><source src="https://cdn.pixabay.com/audio/2022/03/15/audio_2d7f1f4b9c.mp3"></audio>
+<audio id="spinSound"><source src="https://cdn.pixabay.com/audio/2022/03/10/audio_8c6b2f9d90.mp3"></audio>
+<audio id="winSound"><source src="https://cdn.pixabay.com/audio/2021/08/04/audio_12b0c7443c.mp3"></audio>
 
 <div class="machine">
   <h1>🎰 幸運拉霸機</h1>
-
   <div class="screen">
     <div class="cell">🥩</div>
     <div class="cell">🎁</div>
@@ -63,213 +98,105 @@ h1{color:#ffd85a}
 </div>
 
 <script>
-// Icons and DOM
+// icons and DOM
 const icons=["🥩","🍖","🦐","🔥","🎁"];
 const cells=document.querySelectorAll('.cell');
 const handle=document.getElementById('handle');
 const result=document.getElementById('result');
-const leverAudioElem=document.getElementById('leverSound');
-const spinAudioElem=document.getElementById('spinSound');
-const winAudioElem=document.getElementById('winSound');
+const leverSound=document.getElementById('leverSound');
+const spinSound=document.getElementById('spinSound');
+const winSound=document.getElementById('winSound');
 
-// State
-let dragging=false,startY=0,distance=0,running=false;
+let dragging=false, startY=0, distance=0, running=false;
 
-// WebAudio engine (lazy)
-let audioCtx=null;
-function getAudioCtx(){
-  if(!audioCtx){
-    const Ctx = window.AudioContext || window.webkitAudioContext;
-    if(!Ctx) return null;
-    audioCtx = new Ctx();
-  }
-  return audioCtx;
-}
+function randomIcon(){ return icons[Math.floor(Math.random()*icons.length)]; }
 
-// Try to ensure audio context is resumed on first user gesture
-let _audioInitialized = false;
-function initAudioOnGesture(){
-  if(_audioInitialized) return;
-  _audioInitialized = true;
-  const ctx = getAudioCtx();
-  if(!ctx) return;
-  // some browsers require resume() in a user gesture
-  if(ctx.state === 'suspended'){
-    ctx.resume().catch(()=>{});
-  }
-}
-// Attach a one-time listener to resume AudioContext on first meaningful gesture
-['pointerdown','keydown','touchstart','click'].forEach(evt => {
-  window.addEventListener(evt, function onceInitAudio(e){
-    initAudioOnGesture();
-    // remove the listener for performance
-    window.removeEventListener(evt, onceInitAudio);
-  });
-});
-
-// Sound generators using WebAudio when audio elements have no src
-function playLeverTone(){
-  const ctx=getAudioCtx(); if(!ctx) return;
-  const o = ctx.createOscillator();
-  const g = ctx.createGain();
-  o.type='square'; o.frequency.value=880; // bright click
-  g.gain.setValueAtTime(0.0001, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime+0.005);
-  g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+0.18);
-  o.connect(g); g.connect(ctx.destination);
-  o.start(); o.stop(ctx.currentTime+0.18);
-  // cleanup after stop
-  setTimeout(()=>{ try{ o.disconnect(); g.disconnect(); }catch(e){} }, 300);
-}
-
-let spinOsc=null, spinGain=null, spinLFO=null, spinLFOGain=null;
-function startSpinTone(){
-  const ctx=getAudioCtx(); if(!ctx) return;
-  stopSpinTone();
-  // continuous low hum with slight wobble
-  spinOsc = ctx.createOscillator();
-  spinGain = ctx.createGain();
-  spinOsc.type = 'sawtooth';
-  spinOsc.frequency.value = 120; // base
-  spinGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  spinGain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.05);
-  spinOsc.connect(spinGain); spinGain.connect(ctx.destination);
-  spinOsc.start();
-  // add slow vibrato
-  spinLFO = ctx.createOscillator();
-  spinLFOGain = ctx.createGain();
-  spinLFO.frequency.value = 4;
-  spinLFOGain.gain.value = 8; // modulation depth
-  spinLFO.connect(spinLFOGain);
-  spinLFOGain.connect(spinOsc.frequency);
-  spinLFO.start();
-}
-
-function stopSpinTone(){
-  if(!spinOsc) return;
-  try{
-    const ctx = getAudioCtx();
-    if(spinGain && ctx) spinGain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.08);
-  }catch(e){}
-  try{ spinLFO && spinLFO.stop(); }catch(e){}
-  try{ spinOsc.stop(getAudioCtx().currentTime + 0.09); }catch(e){}
-  // disconnect after a short delay
-  setTimeout(()=>{
-    try{ spinLFOGain && spinLFOGain.disconnect(); }catch(e){}
-    try{ spinLFO && spinLFO.disconnect(); }catch(e){}
-    try{ spinGain && spinGain.disconnect(); }catch(e){}
-    try{ spinOsc && spinOsc.disconnect(); }catch(e){}
-    spinOsc=null; spinGain=null; spinLFO=null; spinLFOGain=null;
-  }, 250);
-}
-
-function playWinMelody(){
-  const ctx=getAudioCtx(); if(!ctx) return;
-  const now = ctx.currentTime;
-  const notes = [880,1046.5,1318.5,1760]; // A5, C6, E6, A6 arpeggio
-  notes.forEach((freq,i)=>{
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.type='sine'; o.frequency.value=freq;
-    g.gain.setValueAtTime(0.0001, now + i*0.12);
-    g.gain.exponentialRampToValueAtTime(0.15, now + i*0.12 + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, now + i*0.12 + 0.32);
-    o.connect(g); g.connect(ctx.destination);
-    o.start(now + i*0.12); o.stop(now + i*0.12 + 0.32);
-    // cleanup after
-    setTimeout(()=>{ try{ o.disconnect(); g.disconnect(); }catch(e){} }, 800);
-  });
-}
-
-// Helper: if an audio element has src, play it; otherwise use WebAudio fallback
-function playAudioElementOrFallback(elem, fallback){
-  try{
-    // ensure audio context has been started by user gesture
-    initAudioOnGesture();
-    const src = (elem && (elem.currentSrc || elem.src || '')).trim();
-    if(src){
-      try{ elem.currentTime = 0; const p = elem.play(); if(p) p.catch(()=>{}); }catch(e){}
-      return;
-    }
-  }catch(e){}
-  // fallback function
-  try{ fallback && fallback(); }catch(e){}
-}
-
-// Core logic: spin and check
-function randomIcon(){return icons[Math.floor(Math.random()*icons.length)];}
 function spin(){
   if(running) return;
-  running=true; result.textContent='🎰 旋轉中...';
-  // start spin sound
-  playAudioElementOrFallback(spinAudioElem, startSpinTone);
-  cells.forEach(c=>{c.classList.add('spin'); c.classList.remove('win');});
-  const timer = setInterval(()=>{ cells.forEach(c=>c.innerHTML=randomIcon()); },80);
+  running=true;
+  result.textContent='🎰 旋轉中...';
+
+  // stop previous wins
+  cells.forEach(c=>{ c.classList.remove('win','pulse'); c.classList.add('spin'); });
+
+  // spin sound
+  try{ spinSound.loop = true; spinSound.currentTime = 0; spinSound.play(); }catch(e){}
+
+  const timer = setInterval(()=>{ cells.forEach(c=>c.innerHTML = randomIcon()); }, 80);
+
   setTimeout(()=>{
     clearInterval(timer);
-    // stop spin sound
-    try{ if(spinAudioElem && (spinAudioElem.currentSrc || spinAudioElem.src)){} else { stopSpinTone(); } }catch(e){}
-    const data=[];
-    cells.forEach(c=>{ c.classList.remove('spin'); const icon=randomIcon(); c.innerHTML=icon; data.push(icon); });
+    try{ spinSound.pause(); spinSound.currentTime = 0; }catch(e){}
+
+    // set final icons
+    const data = [];
+    cells.forEach(c=>{ c.classList.remove('spin'); const icon = randomIcon(); c.innerHTML = icon; data.push(icon); });
+
+    // check win
     checkWin(data);
     running=false;
-  },2000);
+  }, 2000);
 }
 
-// Robust win detection: read current cell text, normalize and check rows/cols/diagonals
+// check any winning line (rows, cols, diagonals) and highlight cells
 function checkWin(passedData){
-  // Prefer reading from DOM to avoid any formatting mismatch
-  const data = Array.from(cells).map(c => (c.textContent || '').trim());
+  // passedData expected length 9; but read from DOM to be robust
+  const data = passedData && passedData.length===9 ? passedData.map(s=> (s||'').toString().trim()) : Array.from(cells).map(c=> (c.textContent||'').trim());
 
   const lines = [
     [0,1,2],[3,4,5],[6,7,8], // rows
     [0,3,6],[1,4,7],[2,5,8], // cols
-    [0,4,8],[2,4,6]          // diagonals
+    [0,4,8],[2,4,6]          // diags
   ];
   const winners = new Set();
 
-  lines.forEach(([a,b,c])=>{
-    if(data[a] && data[a]===data[b] && data[b]===data[c]){
+  for(const [a,b,c] of lines){
+    if(data[a] && data[a] === data[b] && data[b] === data[c]){
       winners.add(a); winners.add(b); winners.add(c);
+    }
+  }
+
+  // apply classes
+  cells.forEach((cell, idx)=>{
+    if(winners.has(idx)){
+      cell.classList.add('win');
+      // pulse for visibility
+      setTimeout(()=>cell.classList.add('pulse'), 30);
+    } else {
+      cell.classList.remove('win','pulse');
     }
   });
 
-  // apply/remove win class per cell
-  cells.forEach((cell, idx)=>{
-    if(winners.has(idx)) cell.classList.add('win');
-    else cell.classList.remove('win');
-  });
-
-  if(winners.size > 0){
-    result.textContent='🎉 恭喜中獎！';
-    // play only once
-    try{ playAudioElementOrFallback(winAudioElem, playWinMelody); }catch(e){}
+  if(winners.size>0){
+    result.textContent = '🎉 恭喜中獎！';
+    try{ winSound.currentTime=0; winSound.play(); }catch(e){}
   } else {
-    result.textContent='😆 再接再厲！';
+    result.textContent = '😆 再接再厲！';
   }
 }
 
-// 拉桿控制
-handle.addEventListener('pointerdown',function(e){ dragging=true; startY=e.clientY; // play lever sound
-  playAudioElementOrFallback(leverAudioElem, playLeverTone);
-  try{ handle.setPointerCapture && handle.setPointerCapture(e.pointerId); }catch(err){}
+// drag/lever handlers
+handle.addEventListener('pointerdown', (e)=>{
+  dragging=true; startY=e.clientY; distance=0;
+  try{ leverSound.currentTime=0; leverSound.play(); }catch(e){}
+  try{ handle.setPointerCapture && handle.setPointerCapture(e.pointerId); }catch(e){}
 });
-handle.addEventListener('pointermove',function(e){ if(!dragging) return; distance = e.clientY - startY; if(distance<0) distance=0; if(distance>100) distance=100; handle.style.transform = `translateY(${distance}px)`; });
-function endDrag(e){ if(!dragging) return; dragging=false; try{ handle.releasePointerCapture && handle.releasePointerCapture(e && e.pointerId); }catch(err){}
-  handle.style.transform='translateY(0px)'; if(distance>60) spin(); distance=0; }
+handle.addEventListener('pointermove', (e)=>{
+  if(!dragging) return; distance = e.clientY - startY; if(distance<0) distance=0; if(distance>100) distance=100; handle.style.transform = `translateY(${distance}px)`; });
+function endDrag(e){ if(!dragging) return; dragging=false; try{ handle.releasePointerCapture && handle.releasePointerCapture(e && e.pointerId); }catch(e){} handle.style.transform='translateY(0px)'; if(distance>60) spin(); distance=0; }
 handle.addEventListener('pointerup', endDrag); handle.addEventListener('pointercancel', endDrag); handle.addEventListener('pointerleave', endDrag);
 
 // keyboard accessibility
-handle.tabIndex=0; handle.addEventListener('keydown',(e)=>{ if(e.code==='Space' || e.code==='Enter'){ e.preventDefault(); playAudioElementOrFallback(leverAudioElem, playLeverTone); spin(); } });
+handle.tabIndex=0;
+handle.addEventListener('keydown', (e)=>{ if(e.code === 'Space' || e.code === 'Enter'){ e.preventDefault(); try{ leverSound.currentTime=0; leverSound.play(); }catch(err){} spin(); } });
 
-// Developer helper: force win with a given icon (e.g., forceWin('🔥'))
+// helper to force a win for testing
 window.forceWin = function(icon){
-  for(let r=0;r<3;r++){
-    cells[r*3].innerHTML = icon; cells[r*3+1].innerHTML = icon; cells[r*3+2].innerHTML = icon;
-  }
-  checkWin();
+  for(let r=0;r<3;r++){ cells[r*3].innerHTML = icon; cells[r*3+1].innerHTML = icon; cells[r*3+2].innerHTML = icon; }
+  checkWin(Array.from(cells).map(c=>c.innerHTML));
 };
 
 </script>
+
 </body>
 </html>
